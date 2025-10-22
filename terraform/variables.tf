@@ -1,5 +1,2 @@
-variable "region" { default = "ap-south-1" }
-variable "instance_type" { default = "t2.micro" }
-variable "key_name" {}
-variable "security_group" {}
-variable "ami_id" {}
+# No variables needed; all values are directly in main.tf
+# (file kept for clarity if you extend later)
