@@ -10,7 +10,7 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                git 'https://github.com/Rishitha-Ballem/DevOpsaws-credentials'
+                git 'https://github.com/Rishitha-Ballem/DevOps'
             }
         }
 
