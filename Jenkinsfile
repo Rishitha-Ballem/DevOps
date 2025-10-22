@@ -3,23 +3,23 @@ pipeline {
 
     environment {
         AWS_REGION = 'eu-north-1'
-        ECR_REPO = '130358282811.dkr.ecr.eu-north-1.amazonaws.com/cicd'
+        ECR_REPO   = '130358282811.dkr.ecr.eu-north-1.amazonaws.com/cicd'
         IMAGE_NAME = 'cicd'
     }
 
-  stage('Checkout Code') {
-      steps {
-          git branch: 'main',
-              url: 'https://github.com/Rishitha-Ballem/DevOps'
-      }
-  }
-
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/Rishitha-Ballem/DevOps'
+            }
+        }
 
         stage('Build Docker Image') {
             steps {
                 script {
                     echo "🚧 Building Docker image..."
-                    sh 'docker build -t ${IMAGE_NAME}:latest .'
+                    sh "docker build -t ${IMAGE_NAME}:latest ."
                 }
             }
         }
@@ -29,10 +29,10 @@ pipeline {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
                     script {
                         echo "🔐 Logging in to ECR..."
-                        sh '''
+                        sh """
                         aws ecr get-login-password --region ${AWS_REGION} | \
                         docker login --username AWS --password-stdin ${ECR_REPO}
-                        '''
+                        """
                     }
                 }
             }
@@ -42,10 +42,10 @@ pipeline {
             steps {
                 script {
                     echo "📦 Tagging and pushing image to ECR..."
-                    sh '''
+                    sh """
                     docker tag ${IMAGE_NAME}:latest ${ECR_REPO}:latest
                     docker push ${ECR_REPO}:latest
-                    '''
+                    """
                 }
             }
         }
