@@ -49,11 +49,24 @@ pipeline {
                 }
             }
         }
+
+        stage('Deploy with Terraform') {
+            steps {
+                dir('terraform') {
+                    withAWS(credentials: 'aws-credentials', region: "${AWS_REGION}") {
+                        sh '''
+                        terraform init
+                        terraform apply -auto-approve
+                        '''
+                    }
+                }
+            }
+        }
     }
 
     post {
         success {
-            echo "✅ Docker image successfully built and pushed to ECR: ${ECR_REPO}:latest"
+            echo "✅ Docker image successfully built, pushed to ECR, and deployed via Terraform!"
         }
         failure {
             echo "❌ Pipeline failed — check console output for errors."
