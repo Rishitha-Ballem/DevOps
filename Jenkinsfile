@@ -7,12 +7,13 @@ pipeline {
         IMAGE_NAME = 'cicd'
     }
 
-    stages {
-        stage('Checkout Code') {
-            steps {
-                git 'https://github.com/Rishitha-Ballem/DevOps'
-            }
-        }
+  stage('Checkout Code') {
+      steps {
+          git branch: 'main',
+              url: 'https://github.com/Rishitha-Ballem/DevOps'
+      }
+  }
+
 
         stage('Build Docker Image') {
             steps {
