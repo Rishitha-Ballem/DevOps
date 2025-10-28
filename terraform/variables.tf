@@ -1,5 +1,3 @@
-# No variables needed; all values are directly in main.tf
-#(file kept for clarity if you extend later)
 variable "aws_region" {
   description = "AWS region for deployment"
   type        = string
@@ -30,7 +28,8 @@ variable "sg_name" {
   default     = "cicd-html-sg"
 }
 
-variable "instance_name" { description = "Name tag for EC2 instance"
+variable "instance_name" {
+  description = "Name tag for EC2 instance"
   type        = string
   default     = "cicd-html-server"
 }
