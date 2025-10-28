@@ -6,26 +6,31 @@ terraform {
     }
   }
   required_version = ">= 1.3.0"
-
 }
 
 provider "aws" {
-  region = "eu-north-1"
+  region = var.aws_region
 }
 
+# ------------------------------
 # Fetch latest Amazon Linux 2 AMI
+# ------------------------------
 data "aws_ami" "amazon_linux_2" {
   most_recent = true
+
   filter {
     name   = "name"
     values = ["amzn2-ami-hvm-*-x86_64-gp2"]
   }
+
   owners = ["amazon"]
 }
 
+# ------------------------------
 # Security Group for HTTP + SSH
+# ------------------------------
 resource "aws_security_group" "ci_cd_sg" {
-  name        = "cicd-html-sg"
+  name        = var.sg_name
   description = "Allow HTTP and SSH"
 
   ingress {
@@ -50,51 +55,17 @@ resource "aws_security_group" "ci_cd_sg" {
   }
 
   tags = {
-    Name = "cicd-html-sg"
+    Name = var.sg_name
   }
 }
 
-# IAM Role for EC2 to pull from ECR
-resource "aws_iam_role" "ec2_role" {
-  name = "cicd-html-ec2-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        },
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-}
-
-# Attach ECR and SSM permissions
-resource "aws_iam_role_policy_attachment" "ecr_policy" {
-  role       = aws_iam_role.ec2_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-}
-
-resource "aws_iam_role_policy_attachment" "ssm_policy" {
-  role       = aws_iam_role.ec2_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
-
-# Create Instance Profile
-resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "cicd-html-instance-profile"
-  role = aws_iam_role.ec2_role.name
-}
-
-# EC2 Instance
+# ------------------------------
+# EC2 Instance (runs Docker container)
+# ------------------------------
 resource "aws_instance" "ci_cd_instance" {
   ami                    = data.aws_ami.amazon_linux_2.id
-  instance_type          = "t3.micro"
-  key_name               = "ec2_Rishi"
-  iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
+  instance_type          = var.instance_type
+  key_name               = var.key_name
   vpc_security_group_ids = [aws_security_group.ci_cd_sg.id]
 
   user_data = <<-EOF
@@ -104,13 +75,15 @@ resource "aws_instance" "ci_cd_instance" {
               yum install -y docker awscli
               systemctl enable docker
               systemctl start docker
-              aws ecr get-login-password --region eu-north-1 | docker login --username AWS --password-stdin 130358282811.dkr.ecr.eu-north-1.amazonaws.com
-              docker pull 130358282811.dkr.ecr.eu-north-1.amazonaws.com/cicd:latest
-              docker run -d -p 80:80 130358282811.dkr.ecr.eu-north-1.amazonaws.com/cicd:latest
+              
+              # Login to ECR and run container
+              aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${var.ecr_repo}
+              docker pull ${var.ecr_repo}:latest
+              docker run -d -p 80:80 ${var.ecr_repo}:latest
               EOF
 
   tags = {
-    Name = "cicd-html-server"
+    Name = var.instance_name
   }
 
   metadata_options {
