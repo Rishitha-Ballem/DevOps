@@ -75,6 +75,7 @@ associate_public_ip_address = true
               yum install -y docker awscli
               systemctl enable docker
               systemctl start docker
+              usermod -aG docker ec2-user
               
               # Login to ECR and run container
               aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${var.ecr_repo}
