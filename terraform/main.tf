@@ -67,7 +67,7 @@ resource "aws_instance" "ci_cd_instance" {
   instance_type          = var.instance_type
   key_name               = var.key_name
   vpc_security_group_ids = [aws_security_group.ci_cd_sg.id]
-
+associate_public_ip_address = true  
   user_data = <<-EOF
               #!/bin/bash
               set -e
