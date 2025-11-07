@@ -1,27 +1,47 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CI/CD Test Page</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f2f2f2;
-            text-align: center;
-            padding-top: 50px;
-        }
-        h1 {
-            color: #4CAF50;
-        }
-        p {
-            color: #333;
-        }
-    </style>
+    <title>Rishitha’s Roadmap App</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<h1>CI/CD Pipeline Test</h1>
-<h2>WEB Hook Trigerred</h2>
-<p>If you see this page, your pipeline is working!</p>
+<header>
+    <h1>Rishitha Ballem’s Roadmap Hub</h1>
+    <p class="subtitle">
+        Hi, I’m <strong>Rishitha Ballem</strong>.
+        I’ve created these simple learning roadmaps based on my experience —
+        to guide you through Java Full Stack, AI/ML, and DevOps paths.
+    </p>
+</header>
+
+<main>
+    <div class="cards">
+        <div class="card java" onclick="showRoadmap('java')">
+            <h2>Java Full Stack</h2>
+            <p>Start your journey to become a full-stack Java developer.</p>
+        </div>
+        <div class="card aiml" onclick="showRoadmap('aiml')">
+            <h2>AI / ML</h2>
+            <p>Dive into Artificial Intelligence and Machine Learning.</p>
+        </div>
+        <div class="card devops" onclick="showRoadmap('devops')">
+            <h2>DevOps</h2>
+            <p>Learn the modern DevOps practices to automate and scale.</p>
+        </div>
+    </div>
+
+    <section id="roadmap-section">
+        <h2 id="roadmap-title"></h2>
+        <ul id="roadmap-content"></ul>
+    </section>
+</main>
+
+<footer>
+    <p>Created with ❤️ by Rishitha Ballem</p>
+</footer>
+
+<script src="main.js"></script>
 </body>
 </html>
