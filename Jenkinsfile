@@ -10,54 +10,78 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/Rishitha-Ballem/DevOps'
+                git branch: 'main', url: 'https://github.com/Rishitha-Ballem/DevOps'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    echo "Building Docker image..."
-                    sh "docker build -t ${IMAGE_NAME}:latest ."
-                }
+                sh "docker build -t ${IMAGE_NAME}:latest ."
             }
         }
 
         stage('Login to AWS ECR') {
             steps {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-credentials']]) {
-                    script {
-                        echo "Logging in to ECR..."
-                        sh """
+                    sh """
                         aws ecr get-login-password --region ${AWS_REGION} | \
                         docker login --username AWS --password-stdin ${ECR_REPO}
-                        """
-                    }
+                    """
                 }
             }
         }
 
         stage('Tag and Push Docker Image') {
             steps {
-                script {
-                    echo "Tagging and pushing image to ECR..."
-                    sh """
+                sh """
                     docker tag ${IMAGE_NAME}:latest ${ECR_REPO}:latest
                     docker push ${ECR_REPO}:latest
-                    """
+                """
+            }
+        }
+
+        stage('Terraform Deploy EC2') {
+            steps {
+                dir('terraform') {
+                    withAWS(credentials: 'aws-credentials', region: "${AWS_REGION}") {
+                        sh "terraform init"
+                        sh "terraform apply -auto-approve"
+                    }
                 }
             }
         }
 
-        stage('Deploy with Terraform') {
+        stage('Deploy Application on EC2') {
             steps {
-                dir('terraform') {
-                    withAWS(credentials: 'aws-credentials', region: "${AWS_REGION}") {
-                        sh '''
-                        terraform init
-                        terraform apply -auto-approve
-                        '''
+                withCredentials([
+                    sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'KEY_FILE')
+                ]) {
+
+                    script {
+                        def EC2_IP = sh(
+                            script: "cd terraform && terraform output -raw public_ip",
+                            returnStdout: true
+                        ).trim()
+
+                        sh """
+                            ssh -i ${KEY_FILE} -o StrictHostKeyChecking=no ec2-user@${EC2_IP} '
+                                sudo docker stop cicd || true
+                                sudo docker rm cicd || true
+                                sudo docker rmi ${ECR_REPO}:latest || true
+
+                                echo "Logging into ECR..."
+                                aws ecr get-login-password --region ${AWS_REGION} | \
+                                    sudo docker login --username AWS --password-stdin ${ECR_REPO}
+
+                                echo "Pulling latest image..."
+                                sudo docker pull ${ECR_REPO}:latest
+
+                                echo "Starting container..."
+                                sudo docker run -d --name cicd -p 80:80 ${ECR_REPO}:latest
+
+                                echo "Deployment Successful!"
+                            '
+                        """
                     }
                 }
             }
@@ -66,10 +90,10 @@ pipeline {
 
     post {
         success {
-            echo "Docker image successfully built, pushed to ECR, and deployed via Terraform!"
+            echo "Deployment Completed Successfully!"
         }
         failure {
-            echo "Pipeline failed — check console output for errors."
+            echo "Pipeline Failed!"
         }
     }
 }
