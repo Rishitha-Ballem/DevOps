@@ -51,38 +51,44 @@ pipeline {
             }
         }
 
-       stage('Deploy Application on EC2') {
+   stage('Deploy Application on EC2') {
     steps {
-        sshagent(['ec2-ssh-key']) {   // <--- USE THIS
-            script {
-                def EC2_IP = sh(
-                    script: "cd terraform && terraform output -raw public_ip",
-                    returnStdout: true
-                ).trim()
+        script {
+            // Get EC2 Public IP dynamically from Terraform output
+            def EC2_IP = sh(
+                script: "cd terraform && terraform output -raw public_ip",
+                returnStdout: true
+            ).trim()
 
+            // Load EC2 SSH key using ssh-agent
+            sshagent(credentials: ['ec2-ssh-key']) {
                 sh """
                     ssh -o StrictHostKeyChecking=no ec2-user@${EC2_IP} '
+                        echo "Stopping old container (if exists)..."
                         sudo docker stop cicd || true
                         sudo docker rm cicd || true
+
+                        echo "Removing old image..."
                         sudo docker rmi ${ECR_REPO}:latest || true
 
                         echo "Logging into ECR..."
                         aws ecr get-login-password --region ${AWS_REGION} | \
                             sudo docker login --username AWS --password-stdin ${ECR_REPO}
 
-                        echo "Pulling latest image..."
+                        echo "Pulling latest Docker image..."
                         sudo docker pull ${ECR_REPO}:latest
 
-                        echo "Starting container..."
+                        echo "Starting new container..."
                         sudo docker run -d --name cicd -p 80:80 ${ECR_REPO}:latest
 
-                        echo "✅ Deployment Successful!"
+                        echo "Deployment Successful on EC2!"
                     '
                 """
             }
         }
     }
 }
+
 
     }
 
