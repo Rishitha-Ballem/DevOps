@@ -51,41 +51,39 @@ pipeline {
             }
         }
 
-        stage('Deploy Application on EC2') {
-            steps {
-                withCredentials([
-                    sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'KEY_FILE')
-                ]) {
+       stage('Deploy Application on EC2') {
+    steps {
+        sshagent(['ec2-ssh-key']) {   // <--- USE THIS
+            script {
+                def EC2_IP = sh(
+                    script: "cd terraform && terraform output -raw public_ip",
+                    returnStdout: true
+                ).trim()
 
-                    script {
-                        def EC2_IP = sh(
-                            script: "cd terraform && terraform output -raw public_ip",
-                            returnStdout: true
-                        ).trim()
+                sh """
+                    ssh -o StrictHostKeyChecking=no ec2-user@${EC2_IP} '
+                        sudo docker stop cicd || true
+                        sudo docker rm cicd || true
+                        sudo docker rmi ${ECR_REPO}:latest || true
 
-                        sh """
-                            ssh -i ${KEY_FILE} -o StrictHostKeyChecking=no ec2-user@${EC2_IP} '
-                                sudo docker stop cicd || true
-                                sudo docker rm cicd || true
-                                sudo docker rmi ${ECR_REPO}:latest || true
+                        echo "Logging into ECR..."
+                        aws ecr get-login-password --region ${AWS_REGION} | \
+                            sudo docker login --username AWS --password-stdin ${ECR_REPO}
 
-                                echo "Logging into ECR..."
-                                aws ecr get-login-password --region ${AWS_REGION} | \
-                                    sudo docker login --username AWS --password-stdin ${ECR_REPO}
+                        echo "Pulling latest image..."
+                        sudo docker pull ${ECR_REPO}:latest
 
-                                echo "Pulling latest image..."
-                                sudo docker pull ${ECR_REPO}:latest
+                        echo "Starting container..."
+                        sudo docker run -d --name cicd -p 80:80 ${ECR_REPO}:latest
 
-                                echo "Starting container..."
-                                sudo docker run -d --name cicd -p 80:80 ${ECR_REPO}:latest
-
-                                echo "Deployment Successful!"
-                            '
-                        """
-                    }
-                }
+                        echo "✅ Deployment Successful!"
+                    '
+                """
             }
         }
+    }
+}
+
     }
 
     post {
